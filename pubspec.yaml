@@ -19,3 +19,6 @@ flutter:
   plugin:
     androidPackage: com.ujiboo.flutter_interactive_keyboard
     pluginClass: FlutterInteractiveKeyboardPlugin
+
+flutter_intl:
+  enabled: false
