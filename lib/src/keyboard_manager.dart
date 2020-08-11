@@ -1,27 +1,50 @@
 import 'dart:io';
+import 'dart:math' show max;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_interactive_keyboard/src/channel_receiver.dart';
 import 'channel_manager.dart';
 
-class KeyboardManagerWidget extends StatefulWidget {
+class KeyboardChange {
+  final double offset;
+  final bool tracking;
+  final double delta;
 
+  KeyboardChange({
+    this.offset,
+    this.tracking,
+    this.delta,
+  });
+}
+
+typedef KeyboardChangeCallback = Function(KeyboardChange change);
+
+class KeyboardManagerWidget extends StatefulWidget {
   /// The widget behind the view where the drag to close is enabled
   final Widget child;
+  final double offset;
 
   final Function onKeyboardOpen;
   final Function onKeyboardClose;
-  
-  KeyboardManagerWidget(
-      {Key key, @required this.child, this.onKeyboardOpen, this.onKeyboardClose})
-      : super(key: key);
+  final KeyboardChangeCallback keyboardChangeCallback;
+
+  KeyboardManagerWidget({
+    Key key,
+    @required this.child,
+    this.offset = 0,
+    this.onKeyboardOpen,
+    this.onKeyboardClose,
+    this.keyboardChangeCallback,
+  }) : super(key: key);
 
   KeyboardManagerWidgetState createState() => KeyboardManagerWidgetState();
 }
 
 class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
   ChannelReceiver _channelReceiver;
+
+  KeyboardChangeCallback keyboardChangeCallback;
 
   List<int> _pointers = [];
   int get activePointer => _pointers.length > 0 ? _pointers.first : null;
@@ -44,6 +67,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
   @override
   void initState() {
     super.initState();
+    keyboardChangeCallback = widget.keyboardChangeCallback;
     if (Platform.isIOS) {
       _channelReceiver = ChannelReceiver(() {
         _hasScreenshot = true;
@@ -59,19 +83,17 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
     var keyboardOpen = bottom > 0;
     var oldKeyboardOpen = _keyboardOpen ?? !keyboardOpen;
     _keyboardOpen = keyboardOpen;
-    
+
     if (_keyboardOpen) {
       dismissed = false;
       _keyboardHeight = bottom;
-      if(!oldKeyboardOpen && activePointer == null) {
-        if(widget.onKeyboardOpen != null)
-          widget.onKeyboardOpen();
+      if (!oldKeyboardOpen && activePointer == null) {
+        if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
       }
     } else {
       // Close notification if the keyobard closes while not dragging
-      if(oldKeyboardOpen && activePointer == null) {
-        if(widget.onKeyboardClose != null)
-          widget.onKeyboardClose();
+      if (oldKeyboardOpen && activePointer == null) {
+        if (widget.onKeyboardClose != null) widget.onKeyboardClose();
         dismissed = true;
       }
     }
@@ -97,9 +119,15 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
           //print("pointerUp $_velocity, $_over, ${details.pointer}, $activePointer");
           if (_over > 0) {
             if (Platform.isIOS) {
-              if (_velocity > 0.1 || _velocity < -0.3) {
+              if ((_velocity > 0.1 || _velocity < -0.3)) {
                 if (_velocity > 0) {
                   _dismissing = true;
+                  if (keyboardChangeCallback is Function) {
+                    keyboardChangeCallback(KeyboardChange(
+                      tracking: false,
+                      offset: 0,
+                    ));
+                  }
                 }
                 ChannelManager.fling(_velocity).then((value) {
                   if (_velocity < 0) {
@@ -109,11 +137,17 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
                   } else {
                     _dismissing = false;
                     dismissed = true;
-                    if(widget.onKeyboardClose != null)
+                    if (widget.onKeyboardClose != null)
                       widget.onKeyboardClose();
                   }
                 });
               } else {
+                if (keyboardChangeCallback is Function) {
+                  keyboardChangeCallback(KeyboardChange(
+                    tracking: false,
+                    offset: _keyboardHeight,
+                  ));
+                }
                 ChannelManager.expand().then((value) {
                   if (activePointer == null) {
                     showKeyboard(false);
@@ -124,10 +158,9 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
           }
 
           if (!Platform.isIOS) {
-            if (!_keyboardOpen){
+            if (!_keyboardOpen) {
               dismissed = true;
-              if(widget.onKeyboardClose != null)
-                widget.onKeyboardClose();
+              if (widget.onKeyboardClose != null) widget.onKeyboardClose();
             }
           }
         }
@@ -136,24 +169,31 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
       onPointerMove: (details) {
         if (details.pointer == activePointer) {
           var position = details.position.dy;
-          _over =
-              position - (MediaQuery.of(context).size.height - _keyboardHeight);
+          _over = position -
+              (MediaQuery.of(context).size.height - _keyboardHeight) -
+              widget.offset;
+          final delta = position - _lastPosition;
           updateVelocity(position);
-          //print("pointerMove $_over, $_isAnimating, $activePointer, ${details.pointer}");
           if (_over > 0) {
             if (Platform.isIOS) {
               if (_keyboardOpen && _hasScreenshot) hideKeyboard(false);
               ChannelManager.updateScroll(_over);
+              if (keyboardChangeCallback is Function) {
+                keyboardChangeCallback(KeyboardChange(
+                  offset: max(0, _keyboardHeight - _over),
+                  tracking: true,
+                  delta: delta,
+                ));
+              }
             } else {
               if (_velocity > 0.1) {
                 if (_keyboardOpen) {
                   hideKeyboard(true);
                 }
               } else if (_velocity < -0.5) {
-                if (!_keyboardOpen){
+                if (!_keyboardOpen) {
                   showKeyboard(true);
-                  if(widget.onKeyboardOpen != null)
-                    widget.onKeyboardOpen();
+                  if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
                 }
               }
             }
@@ -164,10 +204,9 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
                 showKeyboard(false);
               }
             } else {
-              if (!_keyboardOpen){
+              if (!_keyboardOpen) {
                 showKeyboard(true);
-                if(widget.onKeyboardOpen != null)
-                  widget.onKeyboardOpen();
+                if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
               }
             }
           }
@@ -195,6 +234,12 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
     } else {
       _showKeyboard();
     }
+    if (keyboardChangeCallback is Function) {
+      keyboardChangeCallback(KeyboardChange(
+        tracking: false,
+        offset: _keyboardHeight,
+      ));
+    }
   }
 
   _showKeyboard() {
@@ -207,18 +252,24 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
     } else {
       _hideKeyboard();
     }
+    if (keyboardChangeCallback is Function) {
+      keyboardChangeCallback(KeyboardChange(
+        tracking: false,
+        offset: 0,
+      ));
+    }
   }
 
   _hideKeyboard() {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     FocusScope.of(context).requestFocus(FocusNode());
   }
-  
-  Future<void> removeImageKeyboard()async{
+
+  Future<void> removeImageKeyboard() async {
     ChannelManager.updateScroll(_keyboardHeight);
   }
 
-  Future<void> safeHideKeyboard()async {
+  Future<void> safeHideKeyboard() async {
     await removeImageKeyboard();
     _hideKeyboard();
   }
