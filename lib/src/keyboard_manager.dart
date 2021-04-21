@@ -25,13 +25,13 @@ class KeyboardManagerWidget extends StatefulWidget {
   final Widget child;
   final double offset;
 
-  final Function onKeyboardOpen;
-  final Function onKeyboardClose;
+  final Function? onKeyboardOpen;
+  final Function? onKeyboardClose;
   final KeyboardChangeCallback keyboardChangeCallback;
 
   KeyboardManagerWidget({
-    Key key,
-    @required this.child,
+    Key? key,
+    required this.child,
     this.offset = 0,
     this.onKeyboardOpen,
     this.onKeyboardClose,
@@ -42,12 +42,13 @@ class KeyboardManagerWidget extends StatefulWidget {
 }
 
 class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
-  ChannelReceiver _channelReceiver;
+  /// Only initialised on IOS
+  late ChannelReceiver _channelReceiver;
 
   KeyboardChangeCallback keyboardChangeCallback;
 
   List<int> _pointers = [];
-  int get activePointer => _pointers.length > 0 ? _pointers.first : null;
+  int? get activePointer => _pointers.length > 0 ? _pointers.first : null;
 
   List<double> _velocities = [];
   double _velocity = 0.0;
@@ -81,19 +82,19 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
   Widget build(BuildContext context) {
     var bottom = MediaQuery.of(context).viewInsets.bottom;
     var keyboardOpen = bottom > 0;
-    var oldKeyboardOpen = _keyboardOpen ?? !keyboardOpen;
+    var oldKeyboardOpen = _keyboardOpen;
     _keyboardOpen = keyboardOpen;
 
     if (_keyboardOpen) {
       dismissed = false;
       _keyboardHeight = bottom;
       if (!oldKeyboardOpen && activePointer == null) {
-        if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
+        widget.onKeyboardOpen?.call();
       }
     } else {
       // Close notification if the keyobard closes while not dragging
       if (oldKeyboardOpen && activePointer == null) {
-        if (widget.onKeyboardClose != null) widget.onKeyboardClose();
+        widget.onKeyboardClose?.call();
         dismissed = true;
       }
     }
@@ -137,8 +138,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
                   } else {
                     _dismissing = false;
                     dismissed = true;
-                    if (widget.onKeyboardClose != null)
-                      widget.onKeyboardClose();
+                    widget.onKeyboardClose?.call();
                   }
                 });
               } else {
@@ -160,7 +160,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
           if (!Platform.isIOS) {
             if (!_keyboardOpen) {
               dismissed = true;
-              if (widget.onKeyboardClose != null) widget.onKeyboardClose();
+              widget.onKeyboardClose?.call();
             }
           }
         }
@@ -193,7 +193,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
               } else if (_velocity < -0.5) {
                 if (!_keyboardOpen) {
                   showKeyboard(true);
-                  if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
+                  widget.onKeyboardClose?.call();
                 }
               }
             }
@@ -206,7 +206,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
             } else {
               if (!_keyboardOpen) {
                 showKeyboard(true);
-                if (widget.onKeyboardOpen != null) widget.onKeyboardOpen();
+                widget.onKeyboardOpen?.call();
               }
             }
           }
