@@ -4,16 +4,17 @@ import 'dart:math' show max;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_interactive_keyboard/src/channel_receiver.dart';
+
 import 'channel_manager.dart';
 
 class KeyboardChange {
   final double offset;
   final bool tracking;
-  final double delta;
+  final double? delta;
 
   KeyboardChange({
-    this.offset,
-    this.tracking,
+    required this.offset,
+    required this.tracking,
     this.delta,
   });
 }
@@ -27,15 +28,15 @@ class KeyboardManagerWidget extends StatefulWidget {
 
   final Function? onKeyboardOpen;
   final Function? onKeyboardClose;
-  final KeyboardChangeCallback keyboardChangeCallback;
+  final KeyboardChangeCallback? keyboardChangeCallback;
 
   KeyboardManagerWidget({
     Key? key,
     required this.child,
+    this.keyboardChangeCallback,
     this.offset = 0,
     this.onKeyboardOpen,
     this.onKeyboardClose,
-    this.keyboardChangeCallback,
   }) : super(key: key);
 
   KeyboardManagerWidgetState createState() => KeyboardManagerWidgetState();
@@ -45,7 +46,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
   /// Only initialised on IOS
   late ChannelReceiver _channelReceiver;
 
-  KeyboardChangeCallback keyboardChangeCallback;
+  KeyboardChangeCallback? keyboardChangeCallback;
 
   List<int> _pointers = [];
   int? get activePointer => _pointers.length > 0 ? _pointers.first : null;
@@ -123,8 +124,8 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
               if ((_velocity > 0.1 || _velocity < -0.3)) {
                 if (_velocity > 0) {
                   _dismissing = true;
-                  if (keyboardChangeCallback is Function) {
-                    keyboardChangeCallback(KeyboardChange(
+                  if (keyboardChangeCallback != null) {
+                    keyboardChangeCallback!(KeyboardChange(
                       tracking: false,
                       offset: 0,
                     ));
@@ -142,8 +143,8 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
                   }
                 });
               } else {
-                if (keyboardChangeCallback is Function) {
-                  keyboardChangeCallback(KeyboardChange(
+                if (keyboardChangeCallback != null) {
+                  keyboardChangeCallback!(KeyboardChange(
                     tracking: false,
                     offset: _keyboardHeight,
                   ));
@@ -178,8 +179,8 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
             if (Platform.isIOS) {
               if (_keyboardOpen && _hasScreenshot) hideKeyboard(false);
               ChannelManager.updateScroll(_over);
-              if (keyboardChangeCallback is Function) {
-                keyboardChangeCallback(KeyboardChange(
+              if (keyboardChangeCallback != null) {
+                keyboardChangeCallback!(KeyboardChange(
                   offset: max(0, _keyboardHeight - _over),
                   tracking: true,
                   delta: delta,
@@ -234,8 +235,8 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
     } else {
       _showKeyboard();
     }
-    if (keyboardChangeCallback is Function) {
-      keyboardChangeCallback(KeyboardChange(
+    if (keyboardChangeCallback != null) {
+      keyboardChangeCallback!(KeyboardChange(
         tracking: false,
         offset: _keyboardHeight,
       ));
@@ -252,8 +253,8 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
     } else {
       _hideKeyboard();
     }
-    if (keyboardChangeCallback is Function) {
-      keyboardChangeCallback(KeyboardChange(
+    if (keyboardChangeCallback != null) {
+      keyboardChangeCallback!(KeyboardChange(
         tracking: false,
         offset: 0,
       ));
