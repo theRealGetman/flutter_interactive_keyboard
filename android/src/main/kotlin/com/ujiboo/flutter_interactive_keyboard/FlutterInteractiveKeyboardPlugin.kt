@@ -7,23 +7,16 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
 
-class
-FlutterInteractiveKeyboardPlugin : FlutterPlugin, MethodCallHandler {
-
+class FlutterInteractiveKeyboardPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
-
-    fun registerWith(registrar: Registrar) {
-        channel = MethodChannel(registrar.messenger(), "flutter_interactive_keyboard")
-        channel.setMethodCallHandler(FlutterInteractiveKeyboardPlugin())
-    }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         result.notImplemented()
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-      channel = MethodChannel(binding.binaryMessenger, "flutter_interactive_keyboard")
-      channel.setMethodCallHandler(FlutterInteractiveKeyboardPlugin())
+        channel = MethodChannel(binding.binaryMessenger, "flutter_interactive_keyboard")
+        channel.setMethodCallHandler(FlutterInteractiveKeyboardPlugin())
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
