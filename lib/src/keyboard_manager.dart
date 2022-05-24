@@ -49,6 +49,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
   KeyboardChangeCallback? keyboardChangeCallback;
 
   List<int> _pointers = [];
+
   int? get activePointer => _pointers.length > 0 ? _pointers.first : null;
 
   List<double> _velocities = [];
@@ -81,7 +82,10 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    var bottom = MediaQuery.of(context).viewInsets.bottom;
+    final viewInsets = EdgeInsets.fromWindowPadding(
+        WidgetsBinding.instance!.window.viewInsets,
+        WidgetsBinding.instance!.window.devicePixelRatio);
+    var bottom = viewInsets.bottom;
     var keyboardOpen = bottom > 0;
     var oldKeyboardOpen = _keyboardOpen;
     _keyboardOpen = keyboardOpen;
@@ -107,8 +111,7 @@ class KeyboardManagerWidgetState extends State<KeyboardManagerWidget> {
           _pointers.add(details.pointer);
           if (_pointers.length == 1) {
             if (Platform.isIOS) {
-              ChannelManager.startScroll(
-                  MediaQuery.of(context).viewInsets.bottom);
+              ChannelManager.startScroll(bottom);
             }
             _lastPosition = details.position.dy;
             _lastTime = DateTime.now().millisecondsSinceEpoch;
